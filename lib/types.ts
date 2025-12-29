@@ -140,6 +140,11 @@ export interface DebouncerOptions {
   messageMapper: MessageMapper;
 
   /**
+   * The message handling strategy to use when receiving messages.
+   */
+  inputMessageHandler: InputMessageHandler;
+
+  /**
    * Whether to include only `groupId` and `entryId` or load message payloads as well when mapping messages before delivery.
    * Loading message payloads may incur additional round trips to fetch the data.
    *
@@ -151,4 +156,8 @@ export interface DebouncerOptions {
    * The underlying backing storage implementation.
    */
   index: IndexedStorage;
+}
+
+export interface InputMessageHandler {
+  handleMessage(message: IndexEntry): Promise<void>;
 }

@@ -1,2 +1,2 @@
-export { Debouncer } from './deouncer.js';
+export { Debouncer } from './debouncer.js';
 export * from './types.js';
