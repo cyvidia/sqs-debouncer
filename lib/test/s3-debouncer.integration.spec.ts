@@ -1,10 +1,12 @@
 import * as chai from 'chai';
 import chaiSorted from 'chai-sorted';
 
-import { Debouncer } from './deouncer.js';
-import { givenIOConsumers } from './test-utils/consumers.js';
-import { S3Mocks } from './test-utils/s3Mocks.js';
-import { SQSMocks } from './test-utils/sqsMocks.js';
+import { Debouncer } from '../debouncer.js';
+import { givenIOConsumers } from '../test-utils/consumers.js';
+import { S3Mocks } from '../test-utils/s3Mocks.js';
+import { SQSMocks } from '../test-utils/sqsMocks.js';
+import { SQSInputMessageHandler } from '../input-message-handler/sqs.js';
+import { MessageMapper } from '../types.js';
 
 chai.use(chaiSorted);
 const { expect } = chai;
@@ -30,32 +32,41 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     await s3Mocks.clearIndexFiles();
   });
 
-  it('should debounce end-to-end - webhook example', async () => {
+  it('should debounce end-to-end - webhook example with input queue', async () => {
+    const messageMapper: MessageMapper = {
+      mapInputMessage: async ({ tenantId, webhookId, data }) => {
+        return {
+          groupId: tenantId,
+          entryId: webhookId,
+          payload: data
+        };
+      },
+      mapOutputMessages: async (groupId, entriesIds, payloadsByEntryId) => {
+        return entriesIds.map((entryId) => {
+          return {
+            tenantId: Number(groupId),
+            webhookId: Number(entryId),
+            data: payloadsByEntryId[entryId]
+          };
+        });
+      }
+    };
+
+    const inputMessageHandler = new SQSInputMessageHandler(
+      sqsMocks.sqsClient!,
+      sqsMocks.sqsQueueUrl!,
+      messageMapper,
+      s3Mocks.uniqueIndex
+    );
     // Given
     const debouncer = new Debouncer({
       mode: 'withPayload',
       index: s3Mocks.uniqueIndex,
-      inputQueueUrl: sqsMocks.sqsQueueUrl,
-      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl,
-      messageMapper: {
-        mapInputMessage: async ({ tenantId, webhookId, data }) => {
-          return {
-            groupId: tenantId,
-            entryId: webhookId,
-            payload: data
-          };
-        },
-        mapOutputMessages: async (groupId, entriesIds, payloadsByEntryId) => {
-          return entriesIds.map((entryId) => {
-            return {
-              tenantId: Number(groupId),
-              webhookId: Number(entryId),
-              data: payloadsByEntryId[entryId]
-            };
-          });
-        }
-      },
-      sqs: sqsMocks.sqsClient
+      inputQueueUrl: sqsMocks.sqsQueueUrl!,
+      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl!,
+      inputMessageHandler,
+      messageMapper,
+      sqs: sqsMocks.sqsClient!
     });
     const consumers = givenIOConsumers(debouncer);
 
@@ -120,4 +131,4 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
   });
 });
 
-const parseMessage = ({ value }) => JSON.parse(value.Body);
+const parseMessage = ({ value }: { value: any }) => JSON.parse(value.Body);

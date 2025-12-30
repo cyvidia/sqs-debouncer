@@ -24,14 +24,24 @@ export class SQSMocks {
     let result = await this.sqsClient.send(
       new CreateQueueCommand({ QueueName: this.queueName })
     );
-    this.sqsQueueUrl = result.QueueUrl;
+
+    const queueUrl = result.QueueUrl;
+
+    if (!queueUrl) {
+      throw new Error('Failed to create SQS queue');
+    }
+
+    this.sqsQueueUrl = queueUrl;
     result = await this.sqsClient.send(
       new CreateQueueCommand({ QueueName: this.debouncedQueueName })
     );
-    this.sqsDebouncedQueueUrl = result.QueueUrl;
+    this.sqsDebouncedQueueUrl = queueUrl;
   }
 
   async clear() {
+    if (!this.sqsClient || !this.sqsQueueUrl || !this.sqsDebouncedQueueUrl) {
+      return;
+    }
     await this.sqsClient.send(
       new DeleteQueueCommand({ QueueUrl: this.sqsQueueUrl })
     );

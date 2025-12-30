@@ -13,8 +13,8 @@ export class ConnectorDDB implements IndexedStorageConnector {
   constructor(
     private ddb: DynamoDBClient,
     private tableName: string,
-    private pkName: string = 'pk',
-    private skName: string = 'sk',
+    private pkName: string = 'groupId',
+    private skName: string = 'entryId',
     private payloadAttr: string = 'payload'
   ) {}
 
@@ -47,17 +47,25 @@ export class ConnectorDDB implements IndexedStorageConnector {
     return new ConnectorDDB(dynamoDB, tableName);
   }
 
-  private pkFromKey(key: string): string {
+  private parseKey(key: string): {
+    pk: string;
+    sk?: string;
+  } {
     const idx = key.lastIndexOf('/');
     // If there is no '/', treat the whole key as the partition
-    return idx === -1 ? key : key.slice(0, idx);
+    if (idx === -1) {
+      return { pk: key };
+    }
+    const pk = key.slice(0, idx);
+    const sk = key.slice(idx + 1);
+    return { pk, sk };
   }
 
   async put(key: string, payload: MessagePayload = {}) {
-    const pk = this.pkFromKey(key);
+    const { pk, sk } = this.parseKey(key);
     const item = {
       [this.pkName]: pk,
-      [this.skName]: key,
+      [this.skName]: sk,
       [this.payloadAttr]: payload
     };
 
@@ -81,10 +89,14 @@ export class ConnectorDDB implements IndexedStorageConnector {
     const results = await Promise.all(
       chunks.map((chunk) =>
         limit(async () => {
-          const requestKeys = chunk.map((key) => ({
-            [this.pkName]: { S: this.pkFromKey(key) },
-            [this.skName]: { S: key }
-          }));
+          const requestKeys = chunk.map((key) => {
+            const { pk, sk } = this.parseKey(key);
+
+            return {
+              [this.pkName]: { S: pk },
+              [this.skName]: { S: sk }
+            };
+          });
 
           const resp = await this.ddb.send(
             new BatchGetItemCommand({
@@ -165,14 +177,18 @@ export class ConnectorDDB implements IndexedStorageConnector {
     await Promise.all(
       chunks.map((chunk) =>
         limit(async () => {
-          const requests = chunk.map((key) => ({
-            DeleteRequest: {
-              Key: {
-                [this.pkName]: { S: this.pkFromKey(key) },
-                [this.skName]: { S: key }
+          const requests = chunk.map((key) => {
+            const { pk, sk } = this.parseKey(key);
+
+            return {
+              DeleteRequest: {
+                Key: {
+                  [this.pkName]: { S: pk },
+                  [this.skName]: { S: sk }
+                }
               }
-            }
-          }));
+            };
+          });
 
           await this.ddb.send(
             new BatchWriteItemCommand({

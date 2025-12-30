@@ -1,6 +1,6 @@
 import sinon from 'sinon';
-import { Debouncer } from './deouncer.js';
-import { DebouncerOptions, IndexedStorage } from './types.js';
+import { Debouncer } from '../debouncer.js';
+import { DebouncerOptions, IndexedStorage } from '../types.js';
 
 describe('DebouncedSQS', () => {
   it('should load entries payloads when mode is DISPATCH_MODE_WITH_PAYLOAD', async () => {
