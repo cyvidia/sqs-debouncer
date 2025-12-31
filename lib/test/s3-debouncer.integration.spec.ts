@@ -2,7 +2,10 @@ import * as chai from 'chai';
 import chaiSorted from 'chai-sorted';
 
 import { Debouncer } from '../debouncer.js';
-import { givenIOConsumers } from '../test-utils/consumers.js';
+import {
+  consumerToGenerator,
+  getOutputConsumer
+} from '../test-utils/consumers.js';
 import { S3Mocks } from '../test-utils/s3Mocks.js';
 import { SQSMocks } from '../test-utils/sqsMocks.js';
 import { SQSInputMessageHandler } from '../input-message-handler/sqs.js';
@@ -56,6 +59,8 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
       messageMapper,
       s3Mocks.s3Storage
     );
+
+    const inputConsumer = await inputMessageHandler.createInputConsumer();
     // Given
     const debouncer = new Debouncer({
       index: s3Mocks.s3Storage,
@@ -64,7 +69,10 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
       messageMapper,
       sqs: sqsMocks.sqsClient!
     });
-    const consumers = givenIOConsumers(debouncer);
+    const outputConsumer = getOutputConsumer(
+      debouncer.sqs,
+      debouncer.outputQueueUrl
+    );
 
     // Given - simulate sending messages including duplicates
     const message1 = {
@@ -92,25 +100,28 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
       sqsMocks.sqsQueueUrl
     );
 
+    const { generator: inputMessages, stop: stopInputConsumer } =
+      consumerToGenerator(inputConsumer);
+
     // Wait for input messages to be processed
-    consumers.startInputConsumer();
+    inputConsumer.start();
     const processedInputMessages = await Promise.all([
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage)
+      inputMessages.next().then(parseMessage),
+      inputMessages.next().then(parseMessage),
+      inputMessages.next().then(parseMessage),
+      inputMessages.next().then(parseMessage)
     ]);
-    consumers.stopInputConsumer();
+    stopInputConsumer();
 
     // When - Dispatching indexed messages
     await debouncer.dispatchStoredMessages();
-    consumers.startOutputConsumer();
+    outputConsumer.startOutputConsumer();
     const processedOutputMessages = await Promise.all([
-      consumers.outputMessages.next().then(parseMessage),
-      consumers.outputMessages.next().then(parseMessage),
-      consumers.outputMessages.next().then(parseMessage)
+      outputConsumer.outputMessages.next().then(parseMessage),
+      outputConsumer.outputMessages.next().then(parseMessage),
+      outputConsumer.outputMessages.next().then(parseMessage)
     ]);
-    consumers.stopOutputConsumer();
+    outputConsumer.stopOutputConsumer();
 
     // Then
     expect(processedInputMessages).to.have.deep.members([

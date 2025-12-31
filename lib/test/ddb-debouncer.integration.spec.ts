@@ -2,7 +2,7 @@ import * as chai from 'chai';
 import chaiSorted from 'chai-sorted';
 
 import { Debouncer } from '../debouncer.js';
-import { givenIOConsumers } from '../test-utils/consumers.js';
+import { getOutputConsumer } from '../test-utils/consumers.js';
 import { SQSMocks } from '../test-utils/sqsMocks.js';
 import { MessageMapper } from '../types.js';
 import { DDBMocks } from '../test-utils/ddbMocks.js';
@@ -59,7 +59,10 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
       messageMapper,
       sqs: sqsMocks.sqsClient!
     });
-    const consumers = givenIOConsumers(debouncer);
+    const outputConsumer = getOutputConsumer(
+      debouncer.sqs,
+      debouncer.outputQueueUrl
+    );
 
     // Given - simulate sending messages including duplicates
     const message1 = {
@@ -87,33 +90,16 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
       await debouncer.ingest(message);
     }
 
-    // Wait for input messages to be processed
-    consumers.startInputConsumer();
-    const processedInputMessages = await Promise.all([
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage),
-      consumers.inputMessages.next().then(parseMessage)
-    ]);
-    consumers.stopInputConsumer();
-
     // When - Dispatching indexed messages
     await debouncer.dispatchStoredMessages();
-    consumers.startOutputConsumer();
+    outputConsumer.startOutputConsumer();
     const processedOutputMessages = await Promise.all([
-      consumers.outputMessages.next().then(parseMessage),
-      consumers.outputMessages.next().then(parseMessage),
-      consumers.outputMessages.next().then(parseMessage)
+      outputConsumer.outputMessages.next().then(parseMessage),
+      outputConsumer.outputMessages.next().then(parseMessage),
+      outputConsumer.outputMessages.next().then(parseMessage)
     ]);
-    consumers.stopOutputConsumer();
+    outputConsumer.stopOutputConsumer();
 
-    // Then
-    expect(processedInputMessages).to.have.deep.members([
-      message1,
-      message1Duplicate,
-      message2,
-      message3
-    ]);
     expect(processedOutputMessages).to.have.deep.members([
       message1,
       message2,
