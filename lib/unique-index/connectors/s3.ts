@@ -1,15 +1,18 @@
 import {
   PutObjectCommand,
-  GetObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
-  S3Client
+  S3Client,
+  GetObjectCommand
 } from '@aws-sdk/client-s3';
+import {
+  IndexedStorage,
+  IndexedStorageConnectorEntry,
+  MessagePayload
+} from '../../types.js';
 import pLimit from 'p-limit';
-import { Readable } from 'node:stream';
-import { IndexedStorageConnector, MessagePayload } from '../../types.js';
 
-export class ConnectorS3 implements IndexedStorageConnector {
+export class S3Storage implements IndexedStorage {
   constructor(
     private s3Client: S3Client,
     private bucketName: string
@@ -24,40 +27,13 @@ export class ConnectorS3 implements IndexedStorageConnector {
     await this.s3Client.send(new PutObjectCommand(putParams));
   }
 
-  async getMany(keys: string[]) {
-    const limit = pLimit(10);
-    const promises = keys.map((key) =>
-      limit(async () => {
-        const params = {
-          Bucket: this.bucketName,
-          Key: key
-        };
-        const data = await this.s3Client.send(new GetObjectCommand(params));
-
-        const dataBuffer = await new Promise((resolve, reject) => {
-          const chunks = [];
-          const stream = data.Body as Readable;
-          stream.on('data', (chunk) => chunks.push(chunk));
-          stream.once('end', () => resolve(Buffer.concat(chunks)));
-          stream.once('error', reject);
-        });
-
-        return {
-          key,
-          payload: JSON.parse(dataBuffer.toString())
-        };
-      })
-    );
-    return await Promise.all(promises);
-  }
-
-  async *list(keyPrefix: string) {
+  async *listKeys(prefix: string = ''): AsyncGenerator<string[]> {
     let continuationToken = null;
     do {
       const params = {
         Bucket: this.bucketName,
-        Prefix: keyPrefix,
-        ContinuationToken: continuationToken
+        ContinuationToken: continuationToken,
+        Prefix: prefix
       };
       const data = await this.s3Client.send(new ListObjectsV2Command(params));
       continuationToken = data.NextContinuationToken;
@@ -68,7 +44,74 @@ export class ConnectorS3 implements IndexedStorageConnector {
     } while (continuationToken);
   }
 
+  async *list(
+    prefix: string = ''
+  ): AsyncGenerator<IndexedStorageConnectorEntry[]> {
+    const limit = pLimit(10);
+
+    for await (const keys of this.listKeys(prefix)) {
+      const realKeys = (keys ?? []).filter((k) => k && !k.endsWith('/'));
+      if (realKeys.length === 0) continue;
+
+      const results = await Promise.all(
+        realKeys.map((Key) =>
+          limit(async () => {
+            try {
+              const res = await this.s3Client.send(
+                new GetObjectCommand({
+                  Bucket: this.bucketName,
+                  Key
+                })
+              );
+
+              const bodyStr =
+                res.Body &&
+                typeof (res.Body as any).transformToString === 'function'
+                  ? await (res.Body as any).transformToString('utf-8')
+                  : '';
+
+              if (!bodyStr) {
+                return null;
+              }
+
+              const payload = JSON.parse(bodyStr);
+
+              const entry: IndexedStorageConnectorEntry = {
+                key: Key,
+                payload
+              };
+
+              return entry;
+            } catch (err) {
+              console.error(`Failed to read S3 object ${Key}`, err);
+              return null;
+            }
+          })
+        )
+      );
+
+      const entries = results.filter(Boolean) as IndexedStorageConnectorEntry[];
+      if (entries.length) yield entries;
+    }
+  }
+
+  async clear() {
+    for await (const keys of this.listKeys()) {
+      if (keys.length === 0) continue;
+
+      const deleteParams = {
+        Bucket: this.bucketName,
+        Delete: {
+          Objects: keys.map((Key) => ({ Key }))
+        }
+      };
+      await this.s3Client.send(new DeleteObjectsCommand(deleteParams));
+    }
+  }
+
   async deleteMany(keys: string[]) {
+    if (keys.length === 0) return;
+
     const deleteParams = {
       Bucket: this.bucketName,
       Delete: {

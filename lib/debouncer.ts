@@ -8,11 +8,10 @@ import pLimit from 'p-limit';
 
 import {
   MessageMapper,
-  DispatchMode,
-  IndexedStorage,
   DebouncerOptions,
   MessagePayload,
-  InputMessageHandler
+  InputMessageHandler,
+  IndexedStorage
 } from './types.js';
 
 export class Debouncer {
@@ -20,7 +19,6 @@ export class Debouncer {
   public inputQueueUrl: string;
   public outputQueueUrl: string;
   private messageMapper: MessageMapper;
-  private mode: DispatchMode;
   private index: IndexedStorage;
   private inputMessageHandler: InputMessageHandler;
 
@@ -33,16 +31,17 @@ export class Debouncer {
     this.inputQueueUrl = options.inputQueueUrl;
     this.outputQueueUrl = options.outputQueueUrl;
     this.messageMapper = options.messageMapper;
-    this.mode = options.mode;
     this.index = options.index;
     this.inputMessageHandler = options.inputMessageHandler;
   }
 
   async ingest(rawEvent: unknown) {
-    const { groupId, entryId, payload } =
-      await this.messageMapper.mapInputMessage(rawEvent);
+    const { key, payload } = await this.messageMapper.mapInputMessage(rawEvent);
 
-    await this.inputMessageHandler.handleMessage({ groupId, entryId, payload });
+    await this.inputMessageHandler.handleMessage({
+      key,
+      payload
+    });
   }
 
   /**
@@ -57,26 +56,9 @@ export class Debouncer {
    * ```
    */
   async dispatchStoredMessages() {
-    for await (const groupIds of this.index.listGroups()) {
-      for (const groupId of groupIds) {
-        for await (const entriesIds of this.index.listEntries(groupId)) {
-          let payloadsByEntryId = {};
-
-          if (this.mode === 'withPayload') {
-            payloadsByEntryId = await this.index.loadEntriesPayloads(
-              groupId,
-              entriesIds
-            );
-          }
-
-          const messages = await this.messageMapper.mapOutputMessages(
-            groupId,
-            entriesIds,
-            payloadsByEntryId
-          );
-          await this.enqueue(messages, this.outputQueueUrl);
-        }
-      }
+    for await (const entries of this.index.list()) {
+      const messages = await this.messageMapper.mapOutputMessages(entries);
+      await this.enqueue(messages, this.outputQueueUrl);
     }
   }
 

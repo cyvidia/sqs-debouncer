@@ -17,10 +17,11 @@ export class SQSInputMessageHandler implements InputMessageHandler {
 
   async createInputConsumer(): Promise<Consumer> {
     const handleMessage = async (message: any) => {
-      const { groupId, entryId, payload } =
-        await this.messageMapper.mapInputMessage(JSON.parse(message.Body));
+      const { key, payload } = await this.messageMapper.mapInputMessage(
+        JSON.parse(message.Body)
+      );
 
-      await this.index.add(groupId, entryId, payload);
+      await this.index.put(key, payload);
     };
 
     return Consumer.create({

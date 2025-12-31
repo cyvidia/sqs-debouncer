@@ -3,36 +3,33 @@ import chaiSorted from 'chai-sorted';
 
 import { Debouncer } from '../debouncer.js';
 import { givenIOConsumers } from '../test-utils/consumers.js';
-import { S3Mocks } from '../test-utils/s3Mocks.js';
 import { SQSMocks } from '../test-utils/sqsMocks.js';
-import { SQSInputMessageHandler } from '../input-message-handler/sqs.js';
 import { MessageMapper } from '../types.js';
+import { DDBMocks } from '../test-utils/ddbMocks.js';
+import { parseMessage } from '../test-utils/parseMessage.js';
+import { DirectInputMessageHandler } from '../input-message-handler/direct.js';
 
 chai.use(chaiSorted);
 const { expect } = chai;
 
-describe('DebouncedSQS Integration Tests with SQS + S3', () => {
+describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
   let sqsMocks: SQSMocks;
-  let s3Mocks: S3Mocks;
+  let ddbMocks: DDBMocks;
 
   before(async () => {
     sqsMocks = new SQSMocks('test-queue', 'test-debounced-queue');
     await sqsMocks.init();
 
-    s3Mocks = new S3Mocks('test-bucket-debounced', 'test-index-debounced');
-    await s3Mocks.init();
+    ddbMocks = new DDBMocks('test-table-debounced', 'test-index-debounced');
+    await ddbMocks.init();
   });
 
   after(async () => {
     await sqsMocks.clear();
-    await s3Mocks.clear();
+    await ddbMocks.clear();
   });
 
-  afterEach(async () => {
-    await s3Mocks.clearIndexFiles();
-  });
-
-  it('should debounce end-to-end - webhook example with input queue', async () => {
+  it('should debounce end-to-end - webhook example with DDB and without input queue', async () => {
     const messageMapper: MessageMapper = {
       mapInputMessage: async ({ webhookId, data }) => {
         return {
@@ -50,15 +47,13 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
       }
     };
 
-    const inputMessageHandler = new SQSInputMessageHandler(
-      sqsMocks.sqsClient!,
-      sqsMocks.sqsQueueUrl!,
-      messageMapper,
-      s3Mocks.s3Storage
+    const inputMessageHandler = new DirectInputMessageHandler(
+      ddbMocks.ddbStorage,
+      messageMapper
     );
     // Given
     const debouncer = new Debouncer({
-      index: s3Mocks.s3Storage,
+      index: ddbMocks.ddbStorage,
       inputQueueUrl: sqsMocks.sqsQueueUrl!,
       outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl!,
       inputMessageHandler,
@@ -127,5 +122,3 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     ]);
   });
 });
-
-const parseMessage = ({ value }: { value: any }) => JSON.parse(value.Body);

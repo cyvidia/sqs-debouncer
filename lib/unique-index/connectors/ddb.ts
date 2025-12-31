@@ -1,0 +1,141 @@
+import {
+  DynamoDBClient,
+  BatchWriteItemCommand,
+  AttributeValue,
+  WriteRequest,
+  BatchWriteItemCommandInput
+} from '@aws-sdk/client-dynamodb';
+import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import type {
+  IndexedStorage,
+  IndexedStorageConnectorEntry,
+  MessagePayload
+} from '../../types.js';
+
+export class DDBStorage implements IndexedStorage {
+  constructor(
+    private ddb: DynamoDBClient,
+    private tableName: string,
+    private pkName: string = 'key',
+    private payloadAttr: string = 'payload'
+  ) {}
+
+  static maybeFromEnv() {
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    const sessionToken = process.env.AWS_SESSION_TOKEN;
+    const tableName = process.env.MESSAGE_RECEIPTS_TABLE_NAME;
+
+    if (!tableName?.trim()) return null;
+
+    const credentials =
+      accessKeyId && secretAccessKey
+        ? { accessKeyId, secretAccessKey, sessionToken }
+        : undefined;
+
+    const dynamoDB = new DynamoDBClient({
+      region: process.env.AWS_REGION,
+      endpoint:
+        process.env.ENV === 'local' ? 'http://localhost:4566' : undefined,
+      credentials
+    });
+
+    return new DDBStorage(dynamoDB, tableName);
+  }
+
+  async put(key: string, payload: MessagePayload = {}) {
+    const item = {
+      [this.pkName]: key,
+      [this.payloadAttr]: payload
+    };
+
+    await this.ddb.send(
+      new PutCommand({
+        TableName: this.tableName,
+        Item: item
+      }) as any
+    );
+  }
+
+  async *list(): AsyncGenerator<IndexedStorageConnectorEntry[]> {
+    let ExclusiveStartKey: Record<string, AttributeValue> | undefined =
+      undefined;
+
+    do {
+      const res = await this.ddb.send(
+        new ScanCommand({
+          TableName: this.tableName,
+          ExclusiveStartKey,
+          ExpressionAttributeNames: {
+            '#pk': this.pkName,
+            '#payload': this.payloadAttr
+          },
+          ProjectionExpression: '#pk, #payload'
+        })
+      );
+
+      const entries: IndexedStorageConnectorEntry[] = (res.Items ?? []).map(
+        (item) => {
+          return {
+            key: item[this.pkName] as string,
+            payload: (item[this.payloadAttr] ?? {}) as MessagePayload
+          };
+        }
+      );
+
+      if (entries.length) yield entries;
+
+      ExclusiveStartKey = res.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+  }
+
+  async clear(): Promise<void> {
+    let ExclusiveStartKey: Record<string, AttributeValue> | undefined;
+
+    do {
+      const scanRes = await this.ddb.send(
+        new ScanCommand({
+          TableName: this.tableName,
+          ExclusiveStartKey,
+          ProjectionExpression: '#pk',
+          ExpressionAttributeNames: {
+            '#pk': this.pkName
+          }
+        })
+      );
+
+      const keys = (scanRes.Items ?? []).map((item) => ({
+        [this.pkName]: item[this.pkName]
+      })) as Record<string, AttributeValue>[];
+
+      // Delete in chunks of 25 (BatchWrite limit)
+      for (let i = 0; i < keys.length; i += 25) {
+        const batchKeys = keys.slice(i, i + 25);
+
+        let requestItems: BatchWriteItemCommandInput['RequestItems'] = {
+          [this.tableName]: batchKeys.map(
+            (Key): WriteRequest => ({
+              DeleteRequest: { Key }
+            })
+          )
+        };
+
+        // Retry unprocessed items until empty
+        while (true) {
+          const res = await this.ddb.send(
+            new BatchWriteItemCommand({
+              RequestItems: requestItems
+            })
+          );
+
+          const unprocessed = res.UnprocessedItems?.[this.tableName] ?? [];
+          if (unprocessed.length === 0) break;
+
+          requestItems = { [this.tableName]: unprocessed };
+        }
+      }
+
+      ExclusiveStartKey = scanRes.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+  }
+}
