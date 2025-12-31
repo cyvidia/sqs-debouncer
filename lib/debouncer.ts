@@ -16,7 +16,6 @@ import {
 
 export class Debouncer {
   public sqs: SQSClient;
-  public inputQueueUrl: string;
   public outputQueueUrl: string;
   private messageMapper: MessageMapper;
   private index: IndexedStorage;
@@ -28,7 +27,6 @@ export class Debouncer {
    */
   constructor(options: DebouncerOptions) {
     this.sqs = options.sqs;
-    this.inputQueueUrl = options.inputQueueUrl;
     this.outputQueueUrl = options.outputQueueUrl;
     this.messageMapper = options.messageMapper;
     this.index = options.index;

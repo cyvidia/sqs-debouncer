@@ -59,8 +59,7 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     // Given
     const debouncer = new Debouncer({
       index: s3Mocks.s3Storage,
-      inputQueueUrl: sqsMocks.sqsQueueUrl!,
-      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl!,
+      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl,
       inputMessageHandler,
       messageMapper,
       sqs: sqsMocks.sqsClient!
@@ -90,7 +89,7 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     };
     await debouncer.enqueue(
       [message1, message1Duplicate, message2, message3],
-      debouncer.inputQueueUrl
+      sqsMocks.sqsQueueUrl
     );
 
     // Wait for input messages to be processed

@@ -5,9 +5,9 @@ import {
 } from '@aws-sdk/client-sqs';
 
 export class SQSMocks {
-  public sqsClient: SQSClient;
-  public sqsQueueUrl: string;
-  public sqsDebouncedQueueUrl: string;
+  public sqsClient!: SQSClient;
+  public sqsQueueUrl!: string;
+  public sqsDebouncedQueueUrl!: string;
 
   constructor(
     public queueName: string,

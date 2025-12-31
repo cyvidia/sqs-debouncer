@@ -54,7 +54,6 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
     // Given
     const debouncer = new Debouncer({
       index: ddbMocks.ddbStorage,
-      inputQueueUrl: sqsMocks.sqsQueueUrl!,
       outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl!,
       inputMessageHandler,
       messageMapper,
@@ -83,10 +82,10 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
       webhookId: 2000,
       data: { external_id: 'example' }
     };
-    await debouncer.enqueue(
-      [message1, message1Duplicate, message2, message3],
-      debouncer.inputQueueUrl
-    );
+
+    for (const message of [message1, message1Duplicate, message2, message3]) {
+      await debouncer.ingest(message);
+    }
 
     // Wait for input messages to be processed
     consumers.startInputConsumer();

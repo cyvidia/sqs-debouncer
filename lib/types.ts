@@ -68,11 +68,6 @@ export interface DebouncerOptions {
   sqs: SQSClient;
 
   /**
-   * The queue from which to receive messages to debounce.
-   */
-  inputQueueUrl: string;
-
-  /**
    * The queue where to put debounced messages.
    */
   outputQueueUrl: string;

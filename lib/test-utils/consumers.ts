@@ -1,6 +1,6 @@
 import { Consumer } from 'sqs-consumer';
 import { eventEmitterToGenerator } from './eventEmitterToGenerator.js';
-import { Debouncer } from '../deouncer.js';
+import { Debouncer } from '../debouncer.js';
 
 export const givenIOConsumers = (debouncer: Debouncer) => {
   const inputConsumer = debouncer.createInputConsumer();
