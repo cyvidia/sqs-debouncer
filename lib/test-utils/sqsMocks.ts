@@ -18,7 +18,11 @@ export class SQSMocks {
   async init() {
     this.sqsClient = new SQSClient({
       region: this.region,
-      endpoint: 'http://localhost:4566'
+      endpoint: 'http://localhost:4566',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? 'test',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? 'test'
+      }
     });
 
     let result = await this.sqsClient.send(

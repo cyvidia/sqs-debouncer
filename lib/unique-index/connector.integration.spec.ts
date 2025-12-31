@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { DDBMocks } from '../test-utils/ddbMocks.js';
 
-describe('ddbConnector Integration Tests with S3', () => {
+describe('Integration Tests with DDB', () => {
   let ddbMocks: DDBMocks;
 
   before(async () => {

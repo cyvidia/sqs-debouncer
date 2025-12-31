@@ -10,6 +10,7 @@ import { S3Mocks } from '../test-utils/s3Mocks.js';
 import { SQSMocks } from '../test-utils/sqsMocks.js';
 import { SQSInputMessageHandler } from '../input-message-handler/sqs.js';
 import { MessageMapper } from '../types.js';
+import { parseMessage } from '../test-utils/parseMessage.js';
 
 chai.use(chaiSorted);
 const { expect } = chai;
@@ -137,5 +138,3 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     ]);
   });
 });
-
-const parseMessage = ({ value }: { value: any }) => JSON.parse(value.Body);
