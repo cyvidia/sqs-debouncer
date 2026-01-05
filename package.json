@@ -50,7 +50,8 @@
     "coverage": "c8 mocha && c8 report --reporter=html && c8 report --reporter=json-summary",
     "lcov": "c8 mocha && c8 report --reporter=lcov",
     "format": "prettier --log-level warn --write \"**/*.{js,json,jsx,md,ts,tsx,html}\"",
-    "generate-docs": "typedoc"
+    "generate-docs": "typedoc",
+    "prepare": "npm run build"
   },
   "release": {
     "branches": [
