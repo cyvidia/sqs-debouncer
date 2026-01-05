@@ -7,5 +7,5 @@ Debounce AWS SQS messages based on content. Dedupe based on a unique id/hash der
 To install this package, simply enter the following command into your terminal (or the variant of whatever package manager you are using):
 
 ```bash
-npm install @cyvidia/sqs-debouncer
+npm install https://github.com/cyvidia/sqs-debouncer.git
 ```
