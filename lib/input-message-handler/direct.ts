@@ -1,19 +1,9 @@
-import {
-  IndexedStorage,
-  IndexEntry,
-  InputMessageHandler,
-  MessageMapper
-} from '../types.js';
+import { IndexedStorage, IndexEntry, InputMessageHandler } from '../types.js';
 
 export class DirectInputMessageHandler implements InputMessageHandler {
-  constructor(
-    private readonly index: IndexedStorage,
-    private readonly messageMapper: MessageMapper
-  ) {}
+  constructor(private readonly index: IndexedStorage) {}
 
   async handleMessage(input: IndexEntry): Promise<void> {
-    const { key, payload } = await this.messageMapper.mapInputMessage(input);
-
-    await this.index.put(key, payload);
+    await this.index.put(input.key, input.payload);
   }
 }

@@ -19,7 +19,11 @@ export class S3Mocks {
     this.s3Client = new S3Client({
       region: this.region,
       endpoint: 'http://localhost:4566',
-      forcePathStyle: true
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? 'test',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? 'test'
+      }
     });
     this.s3Storage = new S3Storage(this.s3Client, this.bucketName);
     await this.s3Client.send(

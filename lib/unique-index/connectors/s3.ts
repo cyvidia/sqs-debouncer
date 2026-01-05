@@ -12,6 +12,7 @@ import {
 } from '../../types.js';
 import pLimit from 'p-limit';
 
+// TODO: Fix this implementation, it's currently broken.
 export class S3Storage implements IndexedStorage {
   constructor(
     private s3Client: S3Client,

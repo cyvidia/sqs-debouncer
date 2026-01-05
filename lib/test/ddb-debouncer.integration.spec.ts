@@ -33,7 +33,7 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
     const messageMapper: MessageMapper = {
       mapInputMessage: async ({ webhookId, data }) => {
         return {
-          key: webhookId,
+          key: String(webhookId),
           payload: data
         };
       },
@@ -48,8 +48,7 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
     };
 
     const inputMessageHandler = new DirectInputMessageHandler(
-      ddbMocks.ddbStorage,
-      messageMapper
+      ddbMocks.ddbStorage
     );
     // Given
     const debouncer = new Debouncer({
@@ -66,22 +65,18 @@ describe('DebouncedSQS Integration Tests with SQS + DDB', () => {
 
     // Given - simulate sending messages including duplicates
     const message1 = {
-      tenantId: 100,
       webhookId: 4001,
       data: { external_id: 'example' }
     };
     const message1Duplicate = {
-      tenantId: 100,
       webhookId: 4001,
       data: { external_id: 'example' }
     };
     const message2 = {
-      tenantId: 100,
       webhookId: 7654,
       data: { external_id: 'example' }
     };
     const message3 = {
-      tenantId: 987,
       webhookId: 2000,
       data: { external_id: 'example' }
     };

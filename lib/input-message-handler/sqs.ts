@@ -1,25 +1,17 @@
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { Consumer } from 'sqs-consumer';
-import {
-  IndexedStorage,
-  IndexEntry,
-  InputMessageHandler,
-  MessageMapper
-} from '../types.js';
+import { IndexedStorage, IndexEntry, InputMessageHandler } from '../types.js';
 
 export class SQSInputMessageHandler implements InputMessageHandler {
   constructor(
     private readonly sqs: SQSClient,
     private inputQueueUrl: string,
-    private readonly messageMapper: MessageMapper,
     private readonly index: IndexedStorage
   ) {}
 
   async createInputConsumer(): Promise<Consumer> {
     const handleMessage = async (message: any) => {
-      const { key, payload } = await this.messageMapper.mapInputMessage(
-        JSON.parse(message.Body)
-      );
+      const { key, payload } = JSON.parse(message.Body);
 
       await this.index.put(key, payload);
     };

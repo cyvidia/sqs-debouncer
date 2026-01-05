@@ -40,7 +40,7 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     const messageMapper: MessageMapper = {
       mapInputMessage: async ({ webhookId, data }) => {
         return {
-          key: webhookId,
+          key: String(webhookId),
           payload: data
         };
       },
@@ -57,7 +57,6 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     const inputMessageHandler = new SQSInputMessageHandler(
       sqsMocks.sqsClient!,
       sqsMocks.sqsQueueUrl!,
-      messageMapper,
       s3Mocks.s3Storage
     );
 
@@ -65,7 +64,7 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
     // Given
     const debouncer = new Debouncer({
       index: s3Mocks.s3Storage,
-      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl,
+      outputQueueUrl: sqsMocks.sqsDebouncedQueueUrl!,
       inputMessageHandler,
       messageMapper,
       sqs: sqsMocks.sqsClient!
@@ -77,22 +76,18 @@ describe('DebouncedSQS Integration Tests with SQS + S3', () => {
 
     // Given - simulate sending messages including duplicates
     const message1 = {
-      tenantId: 100,
       webhookId: 4001,
       data: { external_id: 'example' }
     };
     const message1Duplicate = {
-      tenantId: 100,
       webhookId: 4001,
       data: { external_id: 'example' }
     };
     const message2 = {
-      tenantId: 100,
       webhookId: 7654,
       data: { external_id: 'example' }
     };
     const message3 = {
-      tenantId: 987,
       webhookId: 2000,
       data: { external_id: 'example' }
     };
