@@ -5,23 +5,21 @@ import {
 } from '@aws-sdk/client-sqs';
 import { nanoid } from 'nanoid';
 import pLimit from 'p-limit';
-import { Consumer } from 'sqs-consumer';
 
 import {
   MessageMapper,
-  DispatchMode,
-  IndexedStorage,
   DebouncerOptions,
-  MessagePayload
+  MessagePayload,
+  InputMessageHandler,
+  IndexedStorage
 } from './types.js';
 
 export class Debouncer {
   public sqs: SQSClient;
-  public inputQueueUrl: string;
   public outputQueueUrl: string;
   private messageMapper: MessageMapper;
-  private mode: DispatchMode;
   private index: IndexedStorage;
+  private inputMessageHandler: InputMessageHandler;
 
   /**
    * Creates debouncer. See {@link createInputConsumer} on how to listen for input messages.
@@ -29,48 +27,18 @@ export class Debouncer {
    */
   constructor(options: DebouncerOptions) {
     this.sqs = options.sqs;
-    this.inputQueueUrl = options.inputQueueUrl;
     this.outputQueueUrl = options.outputQueueUrl;
     this.messageMapper = options.messageMapper;
-    this.mode = options.mode;
     this.index = options.index;
+    this.inputMessageHandler = options.inputMessageHandler;
   }
 
-  /**
-   * Use this consumer to start processing messages on your input queue. Example:
-   *
-   * ```
-   * const consumer = debouncer.createInputConsumer();
-   * consumer.start()
-   * ```
-   */
-  createInputConsumer() {
-    const handleMessage = async (message) => {
-      const { groupId, entryId, payload } =
-        await this.messageMapper.mapInputMessage(JSON.parse(message.Body));
+  async ingest(rawEvent: unknown) {
+    const { key, payload } = await this.messageMapper.mapInputMessage(rawEvent);
 
-      await this.index.add(groupId, entryId, payload);
-    };
-
-    return Consumer.create({
-      sqs: this.sqs,
-      queueUrl: this.inputQueueUrl,
-      batchSize: 10,
-      handleMessageBatch: async (messages) => {
-        const results = await Promise.all(
-          messages.map(async (message) => {
-            try {
-              await handleMessage(message);
-              return message;
-            } catch (error) {
-              console.error(error);
-            }
-          })
-        );
-
-        const successful = results.filter(Boolean);
-        return successful;
-      }
+    await this.inputMessageHandler.handleMessage({
+      key,
+      payload
     });
   }
 
@@ -86,26 +54,9 @@ export class Debouncer {
    * ```
    */
   async dispatchStoredMessages() {
-    for await (const groupIds of this.index.listGroups()) {
-      for (const groupId of groupIds) {
-        for await (const entriesIds of this.index.listEntries(groupId)) {
-          let payloadsByEntryId = {};
-
-          if (this.mode === 'withPayload') {
-            payloadsByEntryId = await this.index.loadEntriesPayloads(
-              groupId,
-              entriesIds
-            );
-          }
-
-          const messages = await this.messageMapper.mapOutputMessages(
-            groupId,
-            entriesIds,
-            payloadsByEntryId
-          );
-          await this.enqueue(messages, this.outputQueueUrl);
-        }
-      }
+    for await (const entries of this.index.list()) {
+      const messages = await this.messageMapper.mapOutputMessages(entries);
+      await this.enqueue(messages, this.outputQueueUrl);
     }
   }
 

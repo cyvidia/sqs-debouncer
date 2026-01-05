@@ -3,13 +3,11 @@ import {
   CreateBucketCommand,
   DeleteBucketCommand
 } from '@aws-sdk/client-s3';
-import { ConnectorS3 } from '../unique-index/connectors/s3.js';
-import { UniqueIndex } from '../unique-index/uniqueIndex.js';
+import { S3Storage } from '../unique-index/connectors/s3.js';
 
 export class S3Mocks {
-  public s3Client: S3Client;
-  public s3Dao: ConnectorS3;
-  public uniqueIndex: UniqueIndex;
+  public s3Client!: S3Client;
+  public s3Storage!: S3Storage;
 
   constructor(
     public bucketName: string,
@@ -21,13 +19,13 @@ export class S3Mocks {
     this.s3Client = new S3Client({
       region: this.region,
       endpoint: 'http://localhost:4566',
-      forcePathStyle: true
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? 'test',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? 'test'
+      }
     });
-    this.s3Dao = new ConnectorS3(this.s3Client, this.bucketName);
-    this.uniqueIndex = new UniqueIndex({
-      name: this.indexName,
-      connector: this.s3Dao
-    });
+    this.s3Storage = new S3Storage(this.s3Client, this.bucketName);
     await this.s3Client.send(
       new CreateBucketCommand({ Bucket: this.bucketName })
     );
@@ -41,9 +39,11 @@ export class S3Mocks {
 
   async clearIndexFiles() {
     const keys = [];
-    for await (const key of this.s3Dao.list(`index/${this.indexName}/`)) {
+    for await (const key of this.s3Storage.listKeys(
+      `index/${this.indexName}/`
+    )) {
       keys.push(...key);
     }
-    await this.s3Dao.deleteMany(keys);
+    await this.s3Storage.deleteMany(keys);
   }
 }

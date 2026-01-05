@@ -1,1 +1,1 @@
-docker run --rm -it -p 4566:4566 -p 4571:4571 -p 8080:8080 -e SERVICES=s3,sqs -e DEFAULT_REGION=us-east-1 localstack/localstack
+docker run --rm -it -p 4566:4566 -p 4571:4571 -p 8080:8080 -e SERVICES=s3,sqs,dynamodb -e DEFAULT_REGION=us-east-1 localstack/localstack

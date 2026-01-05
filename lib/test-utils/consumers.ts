@@ -1,31 +1,24 @@
 import { Consumer } from 'sqs-consumer';
 import { eventEmitterToGenerator } from './eventEmitterToGenerator.js';
-import { Debouncer } from '../deouncer.js';
+import { SQSClient } from '@aws-sdk/client-sqs';
 
-export const givenIOConsumers = (debouncer: Debouncer) => {
-  const inputConsumer = debouncer.createInputConsumer();
-  const { generator: inputMessages, stop: stopInputConsumer } =
-    consumerToGenerator(inputConsumer);
-
+export const getOutputConsumer = (sqs: SQSClient, outputQueueUrl: string) => {
   const outputConsumer = Consumer.create({
-    sqs: debouncer.sqs,
-    queueUrl: debouncer.outputQueueUrl,
+    sqs: sqs,
+    queueUrl: outputQueueUrl,
     handleMessage: async () => {}
   });
   const { generator: outputMessages, stop: stopOutputConsumer } =
     consumerToGenerator(outputConsumer);
 
   return {
-    inputMessages,
-    startInputConsumer: () => inputConsumer.start(),
-    stopInputConsumer,
     outputMessages,
     startOutputConsumer: () => outputConsumer.start(),
     stopOutputConsumer
   };
 };
 
-export const consumerToGenerator = (consumer) => {
+export const consumerToGenerator = (consumer: Consumer) => {
   const generator = eventEmitterToGenerator(consumer, 'message_processed');
 
   const stop = () => {
