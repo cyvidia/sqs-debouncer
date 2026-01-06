@@ -58,6 +58,7 @@ export class Debouncer {
       const messages = await this.messageMapper.mapOutputMessages(entries);
       await this.enqueue(messages, this.outputQueueUrl);
     }
+    await this.index.clear();
   }
 
   async enqueue(messages: MessagePayload[], queueUrl: string) {
