@@ -37,7 +37,7 @@ const messageMapper: MessageMapper = {
 
 const debouncer = new Debouncer({
   index: new S3Storage(s3Client, S3_BUCKET_NAME),
-  inputMessageHandler: new DirectInputMessageHandler(index, messageMapper),
+  inputMessageHandler: new DirectInputMessageHandler(index),
   outputQueueUrl: SQS_DEBOUNCED_QUEUE_URL,
   messageMapper,
   sqs: sqsClient

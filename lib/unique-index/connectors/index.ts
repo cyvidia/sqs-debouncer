@@ -1,2 +1,2 @@
-export * from './ddb.js';
-export * from './s3.js';
+export { DDBStorage } from './ddb.js';
+export { S3Storage } from './s3.js';
