@@ -3,7 +3,6 @@ import {
   SendMessageBatchCommand,
   SendMessageBatchRequestEntry
 } from '@aws-sdk/client-sqs';
-import pLimit from 'p-limit';
 
 import {
   MessageMapper,
@@ -13,6 +12,7 @@ import {
   IndexedStorage
 } from './types.js';
 import { randomUUID } from 'crypto';
+import { createLimit } from './utils/limit.js';
 
 export class Debouncer {
   public sqs: SQSClient;
@@ -79,7 +79,7 @@ export class Debouncer {
       })
     );
 
-    const limit = pLimit(5);
+    const limit = createLimit(5);
     await Promise.all(
       chunkMessages(sqsMessages).map((chunk) =>
         limit(async () => {

@@ -10,7 +10,7 @@ import {
   IndexedStorageConnectorEntry,
   MessagePayload
 } from '../../types.js';
-import pLimit from 'p-limit';
+import { createLimit } from '../../index.js';
 
 // TODO: Fix this implementation, it's currently broken.
 export class S3Storage implements IndexedStorage {
@@ -48,7 +48,7 @@ export class S3Storage implements IndexedStorage {
   async *list(
     prefix: string = ''
   ): AsyncGenerator<IndexedStorageConnectorEntry[]> {
-    const limit = pLimit(10);
+    const limit = createLimit(10);
 
     for await (const keys of this.listKeys(prefix)) {
       const realKeys = (keys ?? []).filter((k) => k && !k.endsWith('/'));
