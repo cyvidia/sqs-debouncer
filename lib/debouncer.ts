@@ -3,7 +3,6 @@ import {
   SendMessageBatchCommand,
   SendMessageBatchRequestEntry
 } from '@aws-sdk/client-sqs';
-import { nanoid } from 'nanoid';
 import pLimit from 'p-limit';
 
 import {
@@ -13,6 +12,7 @@ import {
   InputMessageHandler,
   IndexedStorage
 } from './types.js';
+import { randomUUID } from 'crypto';
 
 export class Debouncer {
   public sqs: SQSClient;
@@ -74,7 +74,7 @@ export class Debouncer {
 
     const sqsMessages = messages.map<SendMessageBatchRequestEntry>(
       (message) => ({
-        Id: nanoid(),
+        Id: randomUUID(),
         MessageBody: JSON.stringify(message)
       })
     );
