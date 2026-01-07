@@ -7,7 +7,6 @@ import {
 import {
   MessageMapper,
   DebouncerOptions,
-  MessagePayload,
   InputMessageHandler,
   IndexedStorage,
   SQSMessage
