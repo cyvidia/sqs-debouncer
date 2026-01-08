@@ -7,9 +7,9 @@ import {
 import {
   MessageMapper,
   DebouncerOptions,
-  MessagePayload,
   InputMessageHandler,
-  IndexedStorage
+  IndexedStorage,
+  SQSMessage
 } from './types.js';
 import { randomUUID } from 'crypto';
 import { createLimit } from './utils/limit.js';
@@ -33,8 +33,8 @@ export class Debouncer {
     this.inputMessageHandler = options.inputMessageHandler;
   }
 
-  async ingest(rawEvent: unknown) {
-    const { key, payload } = await this.messageMapper.mapInputMessage(rawEvent);
+  async ingest(message: SQSMessage) {
+    const { key, payload } = await this.messageMapper.mapInputMessage(message);
 
     await this.inputMessageHandler.handleMessage({
       key,
@@ -61,7 +61,7 @@ export class Debouncer {
     await this.index.clear();
   }
 
-  async enqueue(messages: MessagePayload[], queueUrl: string) {
+  async enqueue(messages: SQSMessage[], queueUrl: string) {
     const chunkMessages = (
       messages: SendMessageBatchRequestEntry[]
     ): Array<SendMessageBatchRequestEntry[]> => {
@@ -75,7 +75,8 @@ export class Debouncer {
     const sqsMessages = messages.map<SendMessageBatchRequestEntry>(
       (message) => ({
         Id: randomUUID(),
-        MessageBody: JSON.stringify(message)
+        MessageGroupId: message.groupId,
+        MessageBody: JSON.stringify(message.body)
       })
     );
 

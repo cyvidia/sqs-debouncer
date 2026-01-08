@@ -2,6 +2,11 @@ import { SQSClient } from '@aws-sdk/client-sqs';
 
 export type MessagePayload = Record<string, any>;
 
+export type SQSMessage = {
+  groupId?: string;
+  body: MessagePayload;
+};
+
 /**
  * Each entry can store arbitrary data.
  */
@@ -46,16 +51,14 @@ export interface MessageMapper {
   /**
    * A mapper to convert your message payload into an {@link IndexEntry}.
    */
-  mapInputMessage(
-    inputMessage: MessagePayload
-  ): IndexEntry | Promise<IndexEntry>;
+  mapInputMessage(inputMessage: SQSMessage): IndexEntry | Promise<IndexEntry>;
 
   /**
    * A mapper to convert debounced entries to the desired output format, supporting just one or multiple messages.
    */
   mapOutputMessages(
     entries: IndexedStorageConnectorEntry[]
-  ): MessagePayload[] | Promise<MessagePayload[]>;
+  ): SQSMessage[] | Promise<SQSMessage[]>;
 }
 
 /**
