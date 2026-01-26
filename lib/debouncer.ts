@@ -54,10 +54,8 @@ export class Debouncer {
    * ```
    */
   async dispatchStoredMessages() {
-    console.log('dispatching stored messages');
     for await (const entries of this.index.list()) {
       const messages = await this.messageMapper.mapOutputMessages(entries);
-      console.log('enqueing messages', messages.length);
       await this.enqueue(messages, this.outputQueueUrl);
     }
     await this.index.clear();
@@ -90,7 +88,13 @@ export class Debouncer {
             QueueUrl: queueUrl,
             Entries: chunk
           };
-          await this.sqs.send(new SendMessageBatchCommand(params));
+          try {
+            await this.sqs.send(new SendMessageBatchCommand(params));
+          } catch (e) {
+            console.error(
+              `Failed to send message batch: ${e}, Entries: ${JSON.stringify(params.Entries)}`
+            );
+          }
         })
       )
     );
