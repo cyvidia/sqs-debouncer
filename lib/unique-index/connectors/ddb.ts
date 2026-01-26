@@ -64,8 +64,9 @@ export class DDBStorage implements IndexedStorage {
   }
 
   async *list(): AsyncGenerator<IndexedStorageConnectorEntry[]> {
-    let ExclusiveStartKey: Record<string, AttributeValue> | undefined =
-      undefined;
+    let ExclusiveStartKey: Record<string, any> | undefined = undefined;
+
+    console.log('listing entries from DynamoDB');
 
     do {
       const res = await this.ddb.send(
@@ -88,6 +89,8 @@ export class DDBStorage implements IndexedStorage {
           };
         }
       );
+
+      console.log('retrieved entries', entries);
 
       if (entries.length) yield entries;
 
