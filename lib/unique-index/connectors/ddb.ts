@@ -1,11 +1,7 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
-  DynamoDBClient,
-  BatchWriteItemCommand,
-  AttributeValue,
-  WriteRequest,
-  BatchWriteItemCommandInput
-} from '@aws-sdk/client-dynamodb';
-import {
+  BatchWriteCommand,
+  BatchWriteCommandInput,
   DynamoDBDocumentClient,
   PutCommand,
   ScanCommand
@@ -95,7 +91,7 @@ export class DDBStorage implements IndexedStorage {
   }
 
   async clear(): Promise<void> {
-    let ExclusiveStartKey: Record<string, AttributeValue> | undefined;
+    let ExclusiveStartKey: Record<string, any> | undefined;
 
     do {
       const scanRes = await this.ddb.send(
@@ -103,34 +99,24 @@ export class DDBStorage implements IndexedStorage {
           TableName: this.tableName,
           ExclusiveStartKey,
           ProjectionExpression: '#pk',
-          ExpressionAttributeNames: {
-            '#pk': this.pkName
-          }
+          ExpressionAttributeNames: { '#pk': this.pkName }
         })
       );
 
-      const keys = (scanRes.Items ?? []).map((item) => ({
+      const keys = (scanRes.Items ?? []).map((item: any) => ({
         [this.pkName]: item[this.pkName]
-      })) as Record<string, AttributeValue>[];
+      }));
 
-      // Delete in chunks of 25 (BatchWrite limit)
       for (let i = 0; i < keys.length; i += 25) {
         const batchKeys = keys.slice(i, i + 25);
 
-        let requestItems: BatchWriteItemCommandInput['RequestItems'] = {
-          [this.tableName]: batchKeys.map(
-            (Key): WriteRequest => ({
-              DeleteRequest: { Key }
-            })
-          )
+        let requestItems: BatchWriteCommandInput['RequestItems'] = {
+          [this.tableName]: batchKeys.map((Key) => ({ DeleteRequest: { Key } }))
         };
 
-        // Retry unprocessed items until empty
         while (true) {
           const res = await this.ddb.send(
-            new BatchWriteItemCommand({
-              RequestItems: requestItems
-            })
+            new BatchWriteCommand({ RequestItems: requestItems })
           );
 
           const unprocessed = res.UnprocessedItems?.[this.tableName] ?? [];
@@ -140,7 +126,7 @@ export class DDBStorage implements IndexedStorage {
         }
       }
 
-      ExclusiveStartKey = scanRes.LastEvaluatedKey;
+      ExclusiveStartKey = scanRes.LastEvaluatedKey as any;
     } while (ExclusiveStartKey);
   }
 }
