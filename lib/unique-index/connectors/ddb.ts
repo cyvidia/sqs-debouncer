@@ -5,7 +5,11 @@ import {
   WriteRequest,
   BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
-import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  ScanCommand
+} from '@aws-sdk/lib-dynamodb';
 import type {
   IndexedStorage,
   IndexedStorageConnectorEntry,
@@ -33,17 +37,19 @@ export class DDBStorage implements IndexedStorage {
         ? { accessKeyId, secretAccessKey, sessionToken }
         : undefined;
 
-    const dynamoDB = new DynamoDBClient({
-      region: process.env.AWS_REGION,
-      endpoint:
-        process.env.ENV === 'local' ? 'http://localhost:4566' : undefined,
-      credentials
-    });
+    const dynamoDB = DynamoDBDocumentClient.from(
+      new DynamoDBClient({
+        region: process.env.AWS_REGION,
+        endpoint:
+          process.env.ENV === 'local' ? 'http://localhost:4566' : undefined,
+        credentials
+      })
+    );
 
     return new DDBStorage(dynamoDB, tableName);
   }
 
-  async put(key: string, payload: MessagePayload = {}) {
+  async put(key: string, payload: MessagePayload) {
     const item = {
       [this.pkName]: key,
       [this.payloadAttr]: payload
