@@ -57,6 +57,7 @@ export class DDBStorage implements IndexedStorage {
   }
 
   async *list(): AsyncGenerator<IndexedStorageConnectorEntry[]> {
+    console.log(`[DEBOUNCER DEBUGGING] Listing all entries from DynamoDB`);
     let ExclusiveStartKey: Record<string, any> | undefined = undefined;
 
     do {
@@ -92,6 +93,8 @@ export class DDBStorage implements IndexedStorage {
   }
 
   async clear(): Promise<void> {
+    console.log(`[DEBOUNCER DEBUGGING] Clearing all entries from DynamoDB`);
+
     let ExclusiveStartKey: Record<string, any> | undefined;
 
     do {
