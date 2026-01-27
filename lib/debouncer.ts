@@ -63,10 +63,7 @@ export class Debouncer {
     }
 
     if (didEnqueue) {
-      console.log(
-        '[DEBOUNCER DEBUGGING] Clearing stored messages after dispatching to SQS'
-      );
-      // await this.index.clear();
+      await this.index.clear();
     }
   }
 
