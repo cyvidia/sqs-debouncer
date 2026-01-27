@@ -84,6 +84,8 @@ export class DDBStorage implements IndexedStorage {
         }
       );
 
+      console.log(`Fetched ${entries.length} entries from DynamoDB`);
+
       if (entries.length) yield entries;
 
       ExclusiveStartKey = res.LastEvaluatedKey;

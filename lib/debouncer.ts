@@ -65,6 +65,7 @@ export class Debouncer {
     }
 
     if (didEnqueue) {
+      console.log('Clearing stored messages after dispatching to SQS');
       await this.index.clear();
     }
   }
@@ -87,6 +88,8 @@ export class Debouncer {
         MessageBody: JSON.stringify(message.body)
       })
     );
+
+    console.log(`Enqueuing ${sqsMessages.length} messages to SQS`);
 
     const limit = createLimit(5);
     await Promise.all(
