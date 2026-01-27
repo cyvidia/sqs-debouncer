@@ -92,6 +92,41 @@ export class DDBStorage implements IndexedStorage {
     } while (ExclusiveStartKey);
   }
 
+  async deleteMany(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+
+    console.log(
+      `[DEBOUNCER DEBUGGING] Deleting ${keys.length} entries from DynamoDB`
+    );
+
+    // DynamoDB BatchWrite supports up to 25 items per batch
+    for (let i = 0; i < keys.length; i += 25) {
+      const batchKeys = keys.slice(i, i + 25).map((key) => ({
+        [this.pkName]: key
+      }));
+
+      let requestItems: BatchWriteCommandInput['RequestItems'] = {
+        [this.tableName]: batchKeys.map((Key) => ({ DeleteRequest: { Key } }))
+      };
+
+      // Handle unprocessed items by retrying
+      while (true) {
+        const res = await this.ddb.send(
+          new BatchWriteCommand({ RequestItems: requestItems })
+        );
+
+        const unprocessed = res.UnprocessedItems?.[this.tableName] ?? [];
+        if (unprocessed.length === 0) break;
+
+        requestItems = { [this.tableName]: unprocessed };
+      }
+    }
+
+    console.log(
+      `[DEBOUNCER DEBUGGING] Deleted ${keys.length} entries from DynamoDB`
+    );
+  }
+
   async clear(): Promise<void> {
     console.log(`[DEBOUNCER DEBUGGING] Clearing all entries from DynamoDB`);
 

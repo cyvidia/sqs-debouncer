@@ -55,15 +55,10 @@ export class Debouncer {
    */
   async dispatchStoredMessages() {
     console.log('[DEBOUNCER DEBUGGING] Dispatching stored messages to SQS');
-    let didEnqueue = false;
     for await (const entries of this.index.list()) {
       const messages = await this.messageMapper.mapOutputMessages(entries);
       await this.enqueue(messages, this.outputQueueUrl);
-      didEnqueue = true;
-    }
-
-    if (didEnqueue) {
-      await this.index.clear();
+      await this.index.deleteMany(entries.map((entry) => entry.key));
     }
   }
 

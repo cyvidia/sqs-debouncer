@@ -45,6 +45,8 @@ export interface IndexedStorage {
    * Deletes all entries.
    */
   clear(): Promise<void>;
+
+  deleteMany(keys: string[]): Promise<void>;
 }
 
 export interface MessageMapper {
