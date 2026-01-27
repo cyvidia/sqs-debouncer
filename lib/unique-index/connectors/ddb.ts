@@ -14,19 +14,16 @@ import type {
 
 export class DDBStorage implements IndexedStorage {
   constructor(
-    private ddb: DynamoDBClient,
+    private ddb: DynamoDBDocumentClient,
     private tableName: string,
     private pkName: string = 'key',
     private payloadAttr: string = 'payload'
   ) {}
 
-  static maybeFromEnv() {
+  static fromEnv(tableName: string) {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
     const sessionToken = process.env.AWS_SESSION_TOKEN;
-    const tableName = process.env.MESSAGE_RECEIPTS_TABLE_NAME;
-
-    if (!tableName?.trim()) return null;
 
     const credentials =
       accessKeyId && secretAccessKey
@@ -55,7 +52,7 @@ export class DDBStorage implements IndexedStorage {
       new PutCommand({
         TableName: this.tableName,
         Item: item
-      }) as any
+      })
     );
   }
 
@@ -130,7 +127,7 @@ export class DDBStorage implements IndexedStorage {
         }
       }
 
-      ExclusiveStartKey = scanRes.LastEvaluatedKey as any;
+      ExclusiveStartKey = scanRes.LastEvaluatedKey;
     } while (ExclusiveStartKey);
   }
 }
