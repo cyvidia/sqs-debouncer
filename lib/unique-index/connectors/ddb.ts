@@ -84,7 +84,9 @@ export class DDBStorage implements IndexedStorage {
         }
       );
 
-      console.log(`Fetched ${entries.length} entries from DynamoDB`);
+      console.log(
+        `[DEBOUNCER DEBUGGING] Fetched ${entries.length} entries from DynamoDB`
+      );
 
       if (entries.length) yield entries;
 

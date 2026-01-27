@@ -65,7 +65,9 @@ export class Debouncer {
     }
 
     if (didEnqueue) {
-      console.log('Clearing stored messages after dispatching to SQS');
+      console.log(
+        '[DEBOUNCER DEBUGGING] Clearing stored messages after dispatching to SQS'
+      );
       await this.index.clear();
     }
   }
@@ -89,7 +91,9 @@ export class Debouncer {
       })
     );
 
-    console.log(`Enqueuing ${sqsMessages.length} messages to SQS`);
+    console.log(
+      `[DEBOUNCER DEBUGGING] Enqueuing ${sqsMessages.length} messages to SQS`
+    );
 
     const limit = createLimit(5);
     await Promise.all(
