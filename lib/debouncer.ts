@@ -54,7 +54,6 @@ export class Debouncer {
    * ```
    */
   async dispatchStoredMessages() {
-    console.log('[DEBOUNCER DEBUGGING] Dispatching stored messages to SQS');
     for await (const entries of this.index.list()) {
       const messages = await this.messageMapper.mapOutputMessages(entries);
       await this.enqueue(messages, this.outputQueueUrl);
@@ -79,10 +78,6 @@ export class Debouncer {
         MessageGroupId: message.groupId,
         MessageBody: JSON.stringify(message.body)
       })
-    );
-
-    console.log(
-      `[DEBOUNCER DEBUGGING] Enqueuing ${sqsMessages.length} messages to SQS`
     );
 
     const limit = createLimit(5);

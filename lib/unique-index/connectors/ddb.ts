@@ -57,7 +57,6 @@ export class DDBStorage implements IndexedStorage {
   }
 
   async *list(): AsyncGenerator<IndexedStorageConnectorEntry[]> {
-    console.log(`[DEBOUNCER DEBUGGING] Listing all entries from DynamoDB`);
     let ExclusiveStartKey: Record<string, any> | undefined = undefined;
 
     do {
@@ -82,10 +81,6 @@ export class DDBStorage implements IndexedStorage {
         }
       );
 
-      console.log(
-        `[DEBOUNCER DEBUGGING] Fetched ${entries.length} entries from DynamoDB`
-      );
-
       if (entries.length) yield entries;
 
       ExclusiveStartKey = res.LastEvaluatedKey;
@@ -94,10 +89,6 @@ export class DDBStorage implements IndexedStorage {
 
   async deleteMany(keys: string[]): Promise<void> {
     if (keys.length === 0) return;
-
-    console.log(
-      `[DEBOUNCER DEBUGGING] Deleting ${keys.length} entries from DynamoDB`
-    );
 
     // DynamoDB BatchWrite supports up to 25 items per batch
     for (let i = 0; i < keys.length; i += 25) {
@@ -121,15 +112,9 @@ export class DDBStorage implements IndexedStorage {
         requestItems = { [this.tableName]: unprocessed };
       }
     }
-
-    console.log(
-      `[DEBOUNCER DEBUGGING] Deleted ${keys.length} entries from DynamoDB`
-    );
   }
 
   async clear(): Promise<void> {
-    console.log(`[DEBOUNCER DEBUGGING] Clearing all entries from DynamoDB`);
-
     let ExclusiveStartKey: Record<string, any> | undefined;
 
     do {
